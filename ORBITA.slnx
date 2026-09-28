@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="ORBITA.App/ORBITA.App.csproj" />
+  <Project Path="ORBITA.Datos/ORBITA.Datos.csproj" />
+  <Project Path="ORBITA.Dominio/ORBITA.Dominio.csproj" />
+</Solution>
