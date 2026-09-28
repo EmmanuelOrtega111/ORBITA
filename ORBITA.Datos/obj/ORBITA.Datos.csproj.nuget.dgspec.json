@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Owner\\OneDrive\\Documentos\\c#\\POO\\Taller2\\ORBITA\\ORBITA.Datos\\ORBITA.Datos.csproj": {}
+    "C:\\Users\\Owner\\OneDrive\\Documentos\\c#\\POO\\Taller02\\ORBITA\\ORBITA.Datos\\ORBITA.Datos.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Owner\\OneDrive\\Documentos\\c#\\POO\\Taller2\\ORBITA\\ORBITA.Datos\\ORBITA.Datos.csproj": {
+    "C:\\Users\\Owner\\OneDrive\\Documentos\\c#\\POO\\Taller02\\ORBITA\\ORBITA.Datos\\ORBITA.Datos.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Owner\\OneDrive\\Documentos\\c#\\POO\\Taller2\\ORBITA\\ORBITA.Datos\\ORBITA.Datos.csproj",
+        "projectUniqueName": "C:\\Users\\Owner\\OneDrive\\Documentos\\c#\\POO\\Taller02\\ORBITA\\ORBITA.Datos\\ORBITA.Datos.csproj",
         "projectName": "ORBITA.Datos",
-        "projectPath": "C:\\Users\\Owner\\OneDrive\\Documentos\\c#\\POO\\Taller2\\ORBITA\\ORBITA.Datos\\ORBITA.Datos.csproj",
+        "projectPath": "C:\\Users\\Owner\\OneDrive\\Documentos\\c#\\POO\\Taller02\\ORBITA\\ORBITA.Datos\\ORBITA.Datos.csproj",
         "packagesPath": "C:\\Users\\Owner\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Owner\\OneDrive\\Documentos\\c#\\POO\\Taller2\\ORBITA\\ORBITA.Datos\\obj\\",
+        "outputPath": "C:\\Users\\Owner\\OneDrive\\Documentos\\c#\\POO\\Taller02\\ORBITA\\ORBITA.Datos\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ORBITA.Dominio")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e501aa9d2a415d92bc4484f4fea1c62f3772ef9e")]
 [assembly: System.Reflection.AssemblyProductAttribute("ORBITA.Dominio")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ORBITA.Dominio")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
