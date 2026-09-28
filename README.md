@@ -14,7 +14,7 @@
 ### Configuración de la Base de Datos:
 - Ejecutar el script SQL adjunto (ORBITA_DB_Script.sql) en SQL Server Management Studio (SSMS) o Visual Studio para crear la base de datos ORBITA_DB y las tablas correspondientes (Usuarios, Misiones, Recursos, Asignaciones).
 - Verificar la cadena de conexión (ConnectionString) en el archivo de configuración del proyecto ORBITA.Datos (ConexionBD.cs).
-- Compilación y Ejecución:
+### Compilación y Ejecución:
 - Abrir el archivo de solución ORBITA.sln en Visual Studio.
 - Establecer el proyecto ORBITA.App como Proyecto de Inicio (Set as Startup Project).
 - Compilar la solución (Ctrl + Shift + B) y ejecutar (F5 o Ctrl + F5).
