@@ -1,14 +1,17 @@
-1. Integrantes del equipo:
-Guerrero Polanco Jose Manuel CP240499
-Fernando Josue Quintanilla Avalos QA221370
-Escobar Ortega Emmanuel Alexander EO260404
+# Taller 2: ORBITA
 
-2. Instrucciones de ejecución.
 
-3. Credenciales de prueba.
+## 1. Integrantes del equipo:
+- Guerrero Polanco Jose Manuel CP240499
+- Fernando Josue Quintanilla Avalos QA221370
+- Escobar Ortega Emmanuel Alexander EO260404
 
-4. Distribución general de módulos.
+## 2. Instrucciones de ejecución.
 
-5. Principios SOLID identificados.
+## 3. Credenciales de prueba.
 
-6. Patrón de diseño propuesto.
+## 4. Distribución general de módulos.
+
+## 5. Principios SOLID identificados.
+
+## 6. Patrón de diseño propuesto.
