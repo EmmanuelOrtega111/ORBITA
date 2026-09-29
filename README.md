@@ -27,10 +27,11 @@ Sistema de gestión y monitoreo para misiones de exploración y asignación de r
    ```
 
 ### Compilación y Ejecución
-1. Abra el archivo de solución `ORBITA.sln` en Visual Studio.
-2. Establezca el proyecto **`ORBITA.app`** como **Proyecto de Inicio** (*Set as Startup Project*).
-3. Compile la solución (`Ctrl + Shift + B`).
-4. Inicie la aplicación (`F5` o `Ctrl + F5`).
+1. Descargue el archivo con la solucion y los datos del programa (puede hacerlo desde el siguiente link tambien " https://github.com/EmmanuelOrtega111/ORBITA ")
+2. Abra el archivo de solución `ORBITA.sln` en Visual Studio.
+3. Establezca el proyecto **`ORBITA.app`** como **Proyecto de Inicio** (*Set as Startup Project*).
+4. Compile la solución (`Ctrl + Shift + B`).
+5. Inicie la aplicación (`F5` o `Ctrl + F5`).
 
 ---
 
@@ -38,9 +39,9 @@ Sistema de gestión y monitoreo para misiones de exploración y asignación de r
 
 | Usuario | Contraseña | Rol | Permisos Principales |
 | :--- | :--- | :--- | :--- |
-| `admin` | `admin123` | **Administrador** | Acceso total: Gestión de usuarios, recursos y misiones. |
-| `coordinador` | `coord123` | **Coordinador** | Gestión operativa de recursos, misiones y asignaciones. |
-| `auditor` | `audit123` | **Auditor** | Solo lectura: Consultas e informes (operaciones bloqueadas). |
+| `admin_user` | `admin123` | **Administrador** | Acceso total: Gestión de usuarios, recursos y misiones. |
+| `coord_user` | `coord123` | **Coordinador** | Gestión operativa de recursos, misiones y asignaciones. |
+| `audit_user` | `audit123` | **Auditor** | Solo lectura: Consultas e informes (operaciones bloqueadas). |
 
 ---
 
@@ -98,44 +99,28 @@ ORBITA/
 
 ### Pruebas de Inicio de Sesión y Control de Acceso (RBAC)
 1. **Inicio de sesión exitoso:** Autenticación de un usuario registrado desde la base de datos (`admin`).
-   *(Insertar Imagen Aquí)*
+   <img width="384" height="157" alt="Captura de pantalla 2026-09-28 222808" src="https://github.com/user-attachments/assets/5ce58514-76d4-4d5a-abac-4b14da17bf43" />
 2. **Rechazo de credenciales:** Intento de inicio de sesión con usuario o contraseña errónea.
-   *(Insertar Imagen Aquí)*
+   <img width="370" height="154" alt="Captura de pantalla 2026-09-28 223007" src="https://github.com/user-attachments/assets/2dab37ea-7585-4d80-946f-f945d7116325" />
 3. **Bloqueo por Rol Auditor:** Intento de creación o modificación de recursos/misiones desde la cuenta de un usuario con rol Auditor, mostrando mensaje de acceso denegado.
-   *(Insertar Imagen Aquí)*
+   <img width="522" height="255" alt="Captura de pantalla 2026-09-28 223147" src="https://github.com/user-attachments/assets/f7e50f1c-6a32-4642-a6fe-2306df3837e3" />
 
 ---
 
 ### Pruebas del Módulo de Recursos
 4. **Registro de Recurso (Dron/Rover/Estación):** Alta exitosa de un recurso asignándole su tipo y parámetros específicos.
-   *(Insertar Imagen Aquí)*
+   <img width="418" height="169" alt="Captura de pantalla 2026-09-28 223739" src="https://github.com/user-attachments/assets/03ef296f-bac5-4206-a461-663af58713e2" />
 5. **Consulta de Recursos Disponibles:** Listado filtrado mostrando únicamente los recursos con estado `Disponible`.
-   *(Insertar Imagen Aquí)*
+   <img width="922" height="147" alt="Captura de pantalla 2026-09-28 223812" src="https://github.com/user-attachments/assets/823bfd46-fdb1-421b-a5e9-0c6e4b8258db" />
 6. **Cambio de Estado de Recurso:** Modificación del estado del recurso a `Mantenimiento` o `Asignado`.
-   *(Insertar Imagen Aquí)*
+   <img width="937" height="305" alt="Captura de pantalla 2026-09-28 223907" src="https://github.com/user-attachments/assets/b6c5700f-f429-4793-8c3c-49b686744011" />
 
 ---
 
 ### Pruebas del Módulo de Misiones y Asignación
 7. **Creación de Misión:** Registro de una nueva misión en estado `Planificada`.
-   *(Insertar Imagen Aquí)*
+   <img width="428" height="133" alt="Captura de pantalla 2026-09-28 224131" src="https://github.com/user-attachments/assets/6cd6a130-8f66-46c2-abd0-ee8ef675ce03" />
 8. **Asignación de Recursos a Misión:** Enlace exitoso entre un recurso disponible y una misión activa.
-   *(Insertar Imagen Aquí)*
-9. **Cálculo Polimórfico de Costo Estimado:** Invocación del método `CalcularCostoOperacion()` según el tipo específico de recurso (Horas en Drones, Kilómetros en Rovers, Días en Estaciones).
-   *(Insertar Imagen Aquí)*
-
----
-
-### Pruebas del Protocolo de Seguridad y Excepciones
-10. **Rechazo de Misión por Recurso en Mantenimiento:** Intento de iniciar una misión que contiene un recurso en estado `Mantenimiento`, activando la regla de seguridad.
-    *(Insertar Imagen Aquí)*
-11. **Captura de Excepción Personalizada (`RecursoNoDisponibleException`):** Demostración del manejo de excepciones personalizadas al violar las reglas de asignación o seguridad.
-    *(Insertar Imagen Aquí)*
-12. **Inicio Exitoso de Misión:** Misión que cumple con los 6 criterios de seguridad pasando al estado `EnEjecucion`.
-    *(Insertar Imagen Aquí)*
-
----
-
-### Dashboard General
-13. **Panel de Control (Dashboard):** Visualización del resumen métrico del estado global de misiones y recursos.
-    *(Insertar Imagen Aquí)*
+   <img width="955" height="385" alt="Captura de pantalla 2026-09-28 224244" src="https://github.com/user-attachments/assets/a3165210-f4b7-41cb-9f41-48f2a62bd5d3" />
+9. **Cálculo de Costo Estimado:** Invocación del método `CalcularCostoOperacion()` según el tipo específico de recurso (Horas en Drones, Kilómetros en Rovers, Días en Estaciones).
+   <img width="824" height="260" alt="Captura de pantalla 2026-09-28 224350" src="https://github.com/user-attachments/assets/a95b8adc-8b45-4a53-a951-a6ad16aea03f" />
