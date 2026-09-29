@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="ORBITA.app/ORBITA.app.csproj" Id="56351a2b-cc51-4bdb-86ae-d322405d65b6" />
+  <Project Path="ORBITA.datos/ORBITA.datos.csproj" Id="7eda1667-428e-4369-99e5-d4ca33ea8bab" />
+  <Project Path="ORBITA.dominios/ORBITA.dominios.csproj" Id="2ed85e17-848e-4620-9122-ae9aad485c10" />
+</Solution>

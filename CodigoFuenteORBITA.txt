@@ -1,0 +1,1690 @@
+using ORBITA.datos;
+using ORBITA.dominios;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ORBITA.app
+{
+    internal class Program
+    {
+        private static Usuario usuarioAutenticado = null;
+        private static UsuarioRepositorio usuarioRepo = new UsuarioRepositorio();
+        private static RecursoRepositorio recursoRepo = new RecursoRepositorio();
+        private static MisionRepositorio misionRepo = new MisionRepositorio();
+
+        static void Main(string[] args)
+        {
+            Console.Title = "SISTEMA ORBITA CONTROL";
+
+            while (true)
+            {
+                if (usuarioAutenticado == null)
+                    MostrarMenuLogin();
+                else
+                    MostrarMenuPrincipal();
+            }
+        }
+
+        static void MostrarMenuLogin()
+        {
+            Console.Clear();
+            Console.WriteLine("===========================================");
+            Console.WriteLine("    SISTEMA ORBITA CONTROL - INICIO DE SESIÓN");
+            Console.WriteLine("===========================================");
+            Console.Write("Usuario: ");
+            string username = Console.ReadLine();
+            Console.Write("Contraseña: ");
+            string password = Console.ReadLine();
+
+            usuarioAutenticado = usuarioRepo.Autenticar(username, password);
+
+            if (usuarioAutenticado != null)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"\n¡Bienvenido {usuarioAutenticado.NombreUsuario} ({usuarioAutenticado.Rol})!");
+                Console.ResetColor();
+                Console.WriteLine("Presione cualquier tecla para ingresar...");
+                Console.ReadKey();
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("\nCredenciales inválidas. Intente nuevamente.");
+                Console.ResetColor();
+                Console.WriteLine("Presione cualquier tecla para reintentar...");
+                Console.ReadKey();
+            }
+        }
+
+        static void MostrarMenuPrincipal()
+        {
+            Console.Clear();
+            Console.WriteLine($"===========================================");
+            Console.WriteLine($"  ORBITA CONTROL | Usuario: {usuarioAutenticado.NombreUsuario} [{usuarioAutenticado.Rol}]");
+            Console.WriteLine($"===========================================");
+            Console.WriteLine("1. Gestión de Usuarios (Solo Admin)");
+            Console.WriteLine("2. Gestión de Recursos");
+            Console.WriteLine("3. Gestión de Misiones");
+            Console.WriteLine("4. Panel de Control (Dashboard)");
+            Console.WriteLine("5. Probar Protocolo de Seguridad");
+            Console.WriteLine("6. Cerrar Sesión");
+            Console.WriteLine("0. Salir del Sistema");
+            Console.Write("\nSeleccione una opción: ");
+
+            switch (Console.ReadLine())
+            {
+                case "1": MenuUsuarios(); break;
+                case "2": MenuRecursos(); break;
+                case "3": MenuMisiones(); break;
+                case "4": MostrarDashboard(); break;
+                case "5": ProbarProtocoloSeguridad(); break;
+                case "6": usuarioAutenticado = null; break;
+                case "0": Environment.Exit(0); break;
+                default:
+                    Console.WriteLine("Opción no válida.");
+                    Console.ReadKey();
+                    break;
+            }
+        }
+
+        static void MenuUsuarios()
+        {
+            if (usuarioAutenticado.Rol != RolUsuario.Administrador)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("\nAcceso denegado: Solo el rol Administrador puede gestionar usuarios.");
+                Console.ResetColor();
+                Console.ReadKey();
+                return;
+            }
+
+            Console.Clear();
+            Console.WriteLine("=== GESTIÓN DE USUARIOS (ADMINISTRADOR) ===");
+            Console.WriteLine("1. Listar Usuarios");
+            Console.WriteLine("2. Registrar Nuevo Usuario");
+            Console.WriteLine("0. Volver");
+            Console.Write("\nOpción: ");
+
+            switch (Console.ReadLine())
+            {
+                case "1": ListarUsuarios(); break;
+                case "2": RegistrarUsuario(); break;
+            }
+        }
+
+        static void ListarUsuarios()
+        {
+            Console.Clear();
+            Console.WriteLine("=== LISTA DE USUARIOS ===");
+            foreach (var u in usuarioRepo.ObtenerTodos())
+            {
+                Console.WriteLine($"ID: {u.Id} | Usuario: {u.NombreUsuario} | Rol: {u.Rol} | Activo: {u.Activo}");
+            }
+            Console.ReadKey();
+        }
+
+        static void RegistrarUsuario()
+        {
+            Console.Clear();
+            Console.WriteLine("=== REGISTRAR NUEVO USUARIO ===");
+            Console.Write("Nombre de usuario: "); string user = Console.ReadLine();
+            Console.Write("Contraseña: "); string pass = Console.ReadLine();
+            Console.WriteLine("Rol: 1. Administrador | 2. Coordinador | 3. Auditor");
+            string rOp = Console.ReadLine();
+            string rol = rOp == "1" ? "Administrador" : rOp == "2" ? "Coordinador" : "Auditor";
+
+            usuarioRepo.RegistrarUsuario(user, pass, rol);
+            Console.WriteLine("\n¡Usuario creado con éxito en la Base de Datos!");
+            Console.ReadKey();
+        }
+
+        // ==================== MENÚ DE RECURSOS ====================
+        static void MenuRecursos()
+        {
+            Console.Clear();
+            Console.WriteLine("=== GESTIÓN DE RECURSOS ===");
+            Console.WriteLine("1. Registrar nuevo recurso");
+            Console.WriteLine("2. Modificar datos de un recurso");
+            Console.WriteLine("3. Consultar TODOS los recursos");
+            Console.WriteLine("4. Consultar ÚNICAMENTE recursos disponibles");
+            Console.WriteLine("5. Cambiar el estado de un recurso");
+            Console.WriteLine("0. Volver");
+            Console.Write("\nOpción: ");
+
+            switch (Console.ReadLine())
+            {
+                case "1": RegistrarRecurso(); break;
+                case "2": ModificarRecurso(); break;
+                case "3": ListarRecursos(false); break;
+                case "4": ListarRecursos(true); break;
+                case "5": CambiarEstadoRecurso(); break;
+            }
+        }
+
+        static void RegistrarRecurso()
+        {
+            if (usuarioAutenticado.Rol == RolUsuario.Auditor) { Denegado(); return; }
+
+            Console.Clear();
+            Console.WriteLine("=== REGISTRAR RECURSO ===");
+            Console.Write("Código (ej. DRN-099): "); string cod = Console.ReadLine();
+            Console.Write("Modelo: "); string mod = Console.ReadLine();
+            Console.WriteLine("Tipo: 1. Dron | 2. Rover | 3. Estación de Sensores");
+            string tOp = Console.ReadLine();
+
+            string tipo = "";
+            string etiquetaCosto = "";
+            string etiquetaP1 = "";
+            string etiquetaP2 = "";
+
+            if (tOp == "1")
+            {
+                tipo = "Dron";
+                etiquetaCosto = "Costo por hora ($USD): ";
+                etiquetaP1 = "Autonomía de vuelo (horas): ";
+                etiquetaP2 = "Alcance (km): ";
+            }
+            else if (tOp == "2")
+            {
+                tipo = "Rover";
+                etiquetaCosto = "Costo por kilómetro ($USD): ";
+                etiquetaP1 = "Autonomía (km): ";
+                etiquetaP2 = "Capacidad de carga (kg): ";
+            }
+            else
+            {
+                tipo = "EstacionSensores";
+                etiquetaCosto = "Costo diario ($USD): ";
+                etiquetaP1 = "Cantidad de sensores: ";
+                etiquetaP2 = "Consumo energético (W): ";
+            }
+
+            Console.Write(etiquetaCosto); decimal costo = decimal.Parse(Console.ReadLine());
+            Console.Write(etiquetaP1); double p1 = double.Parse(Console.ReadLine());
+            Console.Write(etiquetaP2); double p2 = double.Parse(Console.ReadLine());
+
+            recursoRepo.RegistrarRecurso(cod, mod, tipo, costo, p1, p2);
+            Console.WriteLine("\n¡Recurso registrado exitosamente!");
+            Console.ReadKey();
+        }
+
+        static void ModificarRecurso()
+        {
+            if (usuarioAutenticado.Rol == RolUsuario.Auditor) { Denegado(); return; }
+
+            ListarRecursosSinPausa();
+            Console.Write("\nID del recurso a modificar: "); int id = int.Parse(Console.ReadLine());
+            Console.Write("Nuevo Modelo: "); string mod = Console.ReadLine();
+            Console.Write("Nuevo Costo Base: "); decimal costo = decimal.Parse(Console.ReadLine());
+
+            recursoRepo.ModificarModeloYCosto(id, mod, costo);
+            Console.WriteLine("\n¡Datos del recurso actualizados!");
+            Console.ReadKey();
+        }
+
+        static void ListarRecursos(bool soloDisponibles)
+        {
+            Console.Clear();
+            Console.WriteLine(soloDisponibles ? "=== RECURSOS DISPONIBLES ===" : "=== TODOS LOS RECURSOS ===");
+            var lista = soloDisponibles ? recursoRepo.ObtenerDisponibles() : recursoRepo.ObtenerTodos();
+
+            foreach (var r in lista)
+                Console.WriteLine(r.ToString());
+
+            Console.ReadKey();
+        }
+
+        static void CambiarEstadoRecurso()
+        {
+            if (usuarioAutenticado.Rol == RolUsuario.Auditor) { Denegado(); return; }
+
+            ListarRecursosSinPausa();
+            Console.Write("\nID del recurso: "); int id = int.Parse(Console.ReadLine());
+            Console.WriteLine("Estado: 1. Disponible | 2. Asignado | 3. Mantenimiento");
+            string op = Console.ReadLine();
+
+            EstadoRecurso est = EstadoRecurso.Disponible;
+            switch (op)
+            {
+                case "1": est = EstadoRecurso.Disponible; break;
+                case "2": est = EstadoRecurso.Asignado; break;
+                case "3": est = EstadoRecurso.Mantenimiento; break;
+            }
+
+            recursoRepo.CambiarEstado(id, est);
+            Console.WriteLine("\n¡Estado del recurso cambiado!");
+            Console.ReadKey();
+        }
+
+        // ==================== MENÚ DE MISIONES (MODIFICADO) ====================
+        static void MenuMisiones()
+        {
+            Console.Clear();
+            Console.WriteLine("=== GESTION DE MISIONES ===");
+            Console.WriteLine("1. Crear una mision");
+            Console.WriteLine("2. Modificar una mision");
+            Console.WriteLine("3. Consultar misiones registradas");
+            Console.WriteLine("4. Asignar recurso a mision");
+            Console.WriteLine("5. Retirar recurso de mision");
+            Console.WriteLine("6. Iniciar una mision");
+            Console.WriteLine("7. Finalizar una mision");
+            Console.WriteLine("8. Cancelar una mision");
+            Console.WriteLine("9. Calcular costo estimado de operacion");
+            Console.WriteLine("0. Volver");
+            Console.Write("\nOpcion: ");
+
+            switch (Console.ReadLine())
+            {
+                case "1": CrearMision(); break;
+                case "2": ModificarMision(); break;
+                case "3": ListarMisiones(); break;
+                case "4": AsignarRecursoMision(); break;
+                case "5": RetirarRecursoMision(); break;
+                case "6": IniciarMision(); break;
+                case "7": CambiarEstadoMision(EstadoMision.Finalizada); break;
+                case "8": CambiarEstadoMision(EstadoMision.Cancelada); break;
+                case "9": CalcularCostoEstimadoMision(); break;
+            }
+        }
+        static void IniciarMision()
+        {
+            if (usuarioAutenticado.Rol == RolUsuario.Auditor) { Denegado(); return; }
+
+            ListarMisionesSinPausa();
+            Console.Write("\nID de la Mision a Iniciar: ");
+            if (!int.TryParse(Console.ReadLine(), out int idM))
+            {
+                Console.WriteLine("ID no valido.");
+                Console.ReadKey();
+                return;
+            }
+
+            // Se obtiene la misión para ejecutar el Protocolo de Seguridad
+            var mision = misionRepo.ObtenerTodas().FirstOrDefault(m => m.Id == idM);
+
+            if (mision == null)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("\nNo se encontró la mision especificada.");
+                Console.ResetColor();
+                Console.ReadKey();
+                return;
+            }
+
+            // Validación del Protocolo de Seguridad ORBITA (Regla Especial)
+            var (esValido, mensajeError) = mision.ValidarProtocoloSeguridad();
+
+            if (!esValido)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"\n[REGLA DE SEGURIDAD RECHAZADA]: {mensajeError}");
+                Console.ResetColor();
+            }
+            else
+            {
+                misionRepo.CambiarEstadoMision(idM, EstadoMision.EnEjecucion);
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"\n¡La mision [{mision.Codigo}] ha superado el protocolo de seguridad y paso a estado 'EnEjecucion'!");
+                Console.ResetColor();
+            }
+
+            Console.ReadKey();
+        }
+
+        static void CrearMision()
+        {
+            if (usuarioAutenticado.Rol == RolUsuario.Auditor) { Denegado(); return; }
+
+            Console.Clear();
+            Console.WriteLine("=== CREAR MISIÓN ===");
+            Console.Write("Código (ej. MIS-099): "); string cod = Console.ReadLine();
+            Console.Write("Nombre: "); string nom = Console.ReadLine();
+            Console.Write("Descripción: "); string desc = Console.ReadLine();
+            Console.Write("Prioridad (1-5): "); int prio = int.Parse(Console.ReadLine());
+
+            misionRepo.CrearMision(cod, nom, desc, prio, DateTime.Now, DateTime.Now.AddDays(10), usuarioAutenticado.Id);
+            Console.WriteLine("\n¡Misión creada exitosamente en estado 'Planificada'!");
+            Console.ReadKey();
+        }
+
+        static void ModificarMision()
+        {
+            if (usuarioAutenticado.Rol == RolUsuario.Auditor) { Denegado(); return; }
+
+            ListarMisionesSinPausa();
+            Console.Write("\nID de la misión a modificar: "); int id = int.Parse(Console.ReadLine());
+            Console.Write("Nuevo Nombre: "); string nom = Console.ReadLine();
+            Console.Write("Nueva Descripción: "); string desc = Console.ReadLine();
+
+            misionRepo.ModificarMision(id, nom, desc);
+            Console.WriteLine("\n¡Misión modificada!");
+            Console.ReadKey();
+        }
+
+        static void ListarMisiones()
+        {
+            Console.Clear();
+            Console.WriteLine("===================================================================");
+            Console.WriteLine("                    === MISIONES REGISTRADAS ===");
+            Console.WriteLine("===================================================================");
+
+            var misiones = misionRepo.ObtenerTodas();
+            if (misiones.Count == 0)
+            {
+                Console.WriteLine("No hay misiones registradas.");
+            }
+            else
+            {
+                foreach (var m in misiones)
+                {
+                    Console.WriteLine(m.ToString());
+                }
+            }
+
+            Console.ReadKey();
+        }
+        static void CalcularCostoEstimadoMision()
+        {
+            Console.Clear();
+            Console.WriteLine("=== CALCULAR COSTO ESTIMADO DE MISIÓN ===");
+            ListarMisionesSinPausa();
+            Console.Write("\nIngrese el ID de la Misión: ");
+
+            if (!int.TryParse(Console.ReadLine(), out int idMision))
+            {
+                Console.WriteLine("ID no válido.");
+                Console.ReadKey();
+                return;
+            }
+
+            var mision = misionRepo.ObtenerTodas().FirstOrDefault(m => m.Id == idMision);
+            if (mision == null)
+            {
+                Console.WriteLine("Misión no encontrada.");
+                Console.ReadKey();
+                return;
+            }
+
+            if (mision.RecursosAsignados.Count == 0)
+            {
+                Console.WriteLine("\nLa misión no tiene recursos asignados para calcular costos.");
+                Console.ReadKey();
+                return;
+            }
+
+            Console.Write("Ingrese las unidades de uso estimadas (Horas para Drones / Km para Rovers / Días para Estaciones): ");
+            if (!decimal.TryParse(Console.ReadLine(), out decimal unidades) || unidades < 0)
+            {
+                Console.WriteLine("Valor numerico no valido.");
+                Console.ReadKey();
+                return;
+            }
+
+            decimal costoTotalMision = 0m;
+            Console.WriteLine("\n--- Desglose Polimorfico de Recursos ---");
+
+            foreach (var recurso in mision.RecursosAsignados)
+            {
+                // Polimorfismo puro: invoca el método heredado sin preguntar el tipo con if/switch
+                decimal costoRecurso = recurso.CalcularCostoOperacion(unidades);
+                costoTotalMision += costoRecurso;
+
+                Console.WriteLine($"[{recurso.Codigo}] {recurso.Modelo} -> Costo Calculado: ${costoRecurso:F2} USD");
+            }
+
+            Console.WriteLine("--------------------------------------------------");
+            Console.WriteLine($"COSTO TOTAL ESTIMADO DE LA MISION: ${costoTotalMision:F2} USD");
+            Console.ReadKey();
+        }
+        static void AsignarRecursoMision()
+        {
+            if (usuarioAutenticado.Rol == RolUsuario.Auditor) { Denegado(); return; }
+
+            ListarMisionesSinPausa();
+            Console.Write("\nID Misión: "); int idM = int.Parse(Console.ReadLine());
+            ListarRecursosSinPausa();
+            Console.Write("ID Recurso: "); int idR = int.Parse(Console.ReadLine());
+
+            misionRepo.AsignarRecursoAMision(idM, idR);
+            Console.WriteLine("\n¡Recurso asignado a la misión!");
+            Console.ReadKey();
+        }
+
+        static void RetirarRecursoMision()
+        {
+            if (usuarioAutenticado.Rol == RolUsuario.Auditor) { Denegado(); return; }
+
+            ListarMisionesSinPausa();
+            Console.Write("\nID Misión: "); int idM = int.Parse(Console.ReadLine());
+            Console.Write("ID Recurso a retirar: "); int idR = int.Parse(Console.ReadLine());
+
+            misionRepo.RetirarRecursoDeMision(idM, idR);
+            Console.WriteLine("\n¡Recurso retirado y liberado!");
+            Console.ReadKey();
+        }
+
+        static void CambiarEstadoMision(EstadoMision est)
+        {
+            if (usuarioAutenticado.Rol == RolUsuario.Auditor) { Denegado(); return; }
+
+            ListarMisionesSinPausa();
+            Console.Write("\nID Misión: "); int idM = int.Parse(Console.ReadLine());
+
+            misionRepo.CambiarEstadoMision(idM, est);
+            Console.WriteLine($"\n¡Estado de misión actualizado a '{est}'!");
+            Console.ReadKey();
+        }
+
+        // ==================== AUXILIARES ====================
+        static void ListarRecursosSinPausa()
+        {
+            foreach (var r in recursoRepo.ObtenerTodos())
+                Console.WriteLine($"ID: {r.Id} | {r}");
+        }
+
+        static void ListarMisionesSinPausa()
+        {
+            foreach (var m in misionRepo.ObtenerTodas())
+                Console.WriteLine($"ID: {m.Id} | [{m.Codigo}] {m.Nombre} | Estado: {m.Estado}");
+        }
+
+        static void MostrarDashboard()
+        {
+            Console.Clear();
+            Console.WriteLine("=== PANEL DE CONTROL ORBITA (DASHBOARD) ===");
+            var misiones = misionRepo.ObtenerTodas();
+            var recursos = recursoRepo.ObtenerTodos();
+
+            Console.WriteLine($"\n--- MISIONES ---");
+            Console.WriteLine($"Total Misiones: {misiones.Count}");
+            Console.WriteLine($"  - Planificadas: {misiones.Count(m => m.Estado == EstadoMision.Planificada)}");
+            Console.WriteLine($"  - En Ejecución: {misiones.Count(m => m.Estado == EstadoMision.EnEjecucion)}");
+            Console.WriteLine($"  - Finalizadas:   {misiones.Count(m => m.Estado == EstadoMision.Finalizada)}");
+
+            Console.WriteLine($"\n--- RECURSOS ---");
+            Console.WriteLine($"Total Recursos: {recursos.Count}");
+            Console.WriteLine($"  - Disponibles:   {recursos.Count(r => r.Estado == EstadoRecurso.Disponible)}");
+            Console.WriteLine($"  - Asignados:     {recursos.Count(r => r.Estado == EstadoRecurso.Asignado)}");
+            Console.WriteLine($"  - Mantenimiento: {recursos.Count(r => r.Estado == EstadoRecurso.Mantenimiento)}");
+
+            Console.ReadKey();
+        }
+
+        static void ProbarProtocoloSeguridad()
+        {
+            Console.Clear();
+            Console.WriteLine("=== PRUEBA PROTOCOLO DE SEGURIDAD ===");
+            try
+            {
+                var m = new Mision { Codigo = "TEST", Nombre = "Prueba", Responsable = usuarioAutenticado };
+                m.RecursosAsignados.Add(new Dron(3, "DRN-003", "Scout Pro", 90m, 30, 10) { Estado = EstadoRecurso.Mantenimiento });
+
+                var (val, err) = m.ValidarProtocoloSeguridad();
+                if (!val) throw new RecursoNoDisponibleException(err);
+            }
+            catch (RecursoNoDisponibleException ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"Excepción capturada: {ex.Message}");
+                Console.ResetColor();
+            }
+            Console.ReadKey();
+        }
+
+        static void Denegado()
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("\nAcceso denegado: El rol Auditor solo tiene permisos de lectura.");
+            Console.ResetColor();
+            Console.ReadKey();
+        }
+    }
+}
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+// La información general de un ensamblado se controla mediante el siguiente 
+// conjunto de atributos. Cambie estos valores de atributo para modificar la información
+// asociada a un ensamblado.
+[assembly: AssemblyTitle("ORBITA.app")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("ORBITA.app")]
+[assembly: AssemblyCopyright("Copyright ©  2026")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+
+// Si establece ComVisible en false, los tipos de este ensamblado no estarán visibles 
+// para los componentes COM.  Si es necesario obtener acceso a un tipo en este ensamblado desde 
+// COM, establezca el atributo ComVisible en true en este tipo.
+[assembly: ComVisible(false)]
+
+// El siguiente GUID sirve como id. de typelib si este proyecto se expone a COM.
+[assembly: Guid("56351a2b-cc51-4bdb-86ae-d322405d65b6")]
+
+// La información de versión de un ensamblado consta de los cuatro valores siguientes:
+//
+//      Versión principal
+//      Versión secundaria
+//      Número de compilación
+//      Revisión
+//
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+using System;
+using System.Collections.Generic;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ORBITA.datos
+{
+    public static class ConexionBD
+    {
+        // Cadena de conexión con 'TrustServerCertificate=True' para evitar el error de SSL
+        private static string cadenaConexion = @"Server=localhost;Database=ORBITAControlDB;Trusted_Connection=True;TrustServerCertificate=True;";
+
+        public static SqlConnection ObtenerConexion()
+        {
+            return new SqlConnection(cadenaConexion);
+        }
+    }
+}
+using ORBITA.dominios;
+using System;
+using System.Collections.Generic;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ORBITA.datos
+{
+    public class MisionRepositorio
+    {
+    
+        public List<Mision> ObtenerTodas()
+        {
+            var misiones = new List<Mision>();
+
+            using (var conexion = ConexionBD.ObtenerConexion())
+            {
+                conexion.Open();
+                string query = @"SELECT m.Id, m.Codigo, m.Nombre, m.Descripcion, m.Prioridad, 
+                                        m.FechaInicio, m.FechaEstimadaFin, m.Estado, m.IdResponsable,
+                                        u.NombreUsuario, u.Rol, u.Activo
+                                 FROM Misiones m
+                                 INNER JOIN Usuarios u ON m.IdResponsable = u.Id";
+
+                using (var cmd = new SqlCommand(query, conexion))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var m = new Mision
+                        {
+                            Id = reader.GetInt32(0),
+                            Codigo = reader.GetString(1),
+                            Nombre = reader.GetString(2),
+                            Descripcion = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                            Prioridad = reader.GetInt32(4),
+                            FechaInicio = reader.GetDateTime(5),
+                            FechaEstimadaFin = reader.GetDateTime(6),
+                            Estado = (EstadoMision)Enum.Parse(typeof(EstadoMision), reader.GetString(7)),
+                            IdResponsable = reader.GetInt32(8),
+                            Responsable = new Usuario
+                            {
+                                Id = reader.GetInt32(8),
+                                NombreUsuario = reader.GetString(9),
+                                Rol = (RolUsuario)Enum.Parse(typeof(RolUsuario), reader.GetString(10)),
+                                Activo = reader.GetBoolean(11)
+                            }
+                        };
+                        misiones.Add(m);
+                    }
+                }
+
+                // Cargar los recursos asignados a cada misión
+                foreach (var m in misiones)
+                {
+                    // Se incluye r.Tipo en la consulta para instanciar la clase derivada correspondiente
+                    string qRec = @"SELECT r.Id, r.Codigo, r.Modelo, r.Tipo, r.Estado, ISNULL(r.CostoBase, 0) 
+                    FROM Asignaciones a 
+                    INNER JOIN Recursos r ON a.IdRecurso = r.Id 
+                    WHERE a.IdMision = @idMision";
+
+                    using (var cmdRec = new SqlCommand(qRec, conexion))
+                    {
+                        cmdRec.Parameters.AddWithValue("@idMision", m.Id);
+                        using (var readerRec = cmdRec.ExecuteReader())
+                        {
+                            while (readerRec.Read())
+                            {
+                                int id = readerRec.GetInt32(0);
+                                string codigo = readerRec.GetString(1);
+                                string modelo = readerRec.IsDBNull(2) ? "" : readerRec.GetString(2);
+                                string tipo = readerRec.IsDBNull(3) ? "Dron" : readerRec.GetString(3);
+                                string estadoTexto = readerRec.IsDBNull(4) ? "Disponible" : readerRec.GetString(4);
+                                decimal costoBase = Convert.ToDecimal(readerRec[5]);
+
+                                RecursoExploracion recurso = null;
+
+                                // Instanciación polimórfica según el tipo real de la Base de Datos
+                                if (tipo == "Dron")
+                                {
+                                    recurso = new Dron(id, codigo, modelo, costoBase, 0, 0);
+                                }
+                                else if (tipo == "Rover")
+                                {
+                                    recurso = new RoverTerrestre(id, codigo, modelo, costoBase, 0, 0);
+                                }
+                                else if (tipo == "EstacionSensores")
+                                {
+                                    recurso = new EstacionSensores(id, codigo, modelo, costoBase, 0, 0);
+                                }
+
+                                if (recurso != null)
+                                {
+                                    recurso.Estado = (EstadoRecurso)Enum.Parse(typeof(EstadoRecurso), estadoTexto.Replace(" ", ""));
+                                    m.RecursosAsignados.Add(recurso);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return misiones;
+        }
+
+        public void CrearMision(string codigo, string nombre, string descripcion, int prioridad, DateTime inicio, DateTime fin, int idResponsable)
+        {
+            using (var conexion = ConexionBD.ObtenerConexion())
+            {
+                conexion.Open();
+                string query = @"INSERT INTO Misiones (Codigo, Nombre, Descripcion, Prioridad, FechaInicio, FechaEstimadaFin, Estado, IdResponsable) 
+                                VALUES (@cod, @nom, @desc, @prio, @ini, @fin, 'Planificada', @resp)";
+
+                using (var cmd = new SqlCommand(query, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@cod", codigo);
+                    cmd.Parameters.AddWithValue("@nom", nombre);
+                    cmd.Parameters.AddWithValue("@desc", descripcion);
+                    cmd.Parameters.AddWithValue("@prio", prioridad);
+                    cmd.Parameters.AddWithValue("@ini", inicio);
+                    cmd.Parameters.AddWithValue("@fin", fin);
+                    cmd.Parameters.AddWithValue("@resp", idResponsable);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public void ModificarMision(int id, string nuevoNombre, string nuevaDesc)
+        {
+            using (var conexion = ConexionBD.ObtenerConexion())
+            {
+                conexion.Open();
+                string query = "UPDATE Misiones SET Nombre = @nom, Descripcion = @desc WHERE Id = @id";
+                using (var cmd = new SqlCommand(query, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@nom", nuevoNombre);
+                    cmd.Parameters.AddWithValue("@desc", nuevaDesc);
+                    cmd.Parameters.AddWithValue("@id", id);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public void CambiarEstadoMision(int idMision, EstadoMision nuevoEstado)
+        {
+            using (var conexion = ConexionBD.ObtenerConexion())
+            {
+                conexion.Open();
+                string query = "UPDATE Misiones SET Estado = @est WHERE Id = @id";
+                using (var cmd = new SqlCommand(query, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@est", nuevoEstado.ToString());
+                    cmd.Parameters.AddWithValue("@id", idMision);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public void AsignarRecursoAMision(int idMision, int idRecurso)
+        {
+            using (var conexion = ConexionBD.ObtenerConexion())
+            {
+                conexion.Open();
+                string query = "INSERT INTO Asignaciones (IdMision, IdRecurso) VALUES (@idMision, @idRecurso); UPDATE Recursos SET Estado = 'Asignado' WHERE Id = @idRecurso;";
+                using (var cmd = new SqlCommand(query, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@idMision", idMision);
+                    cmd.Parameters.AddWithValue("@idRecurso", idRecurso);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public void RetirarRecursoDeMision(int idMision, int idRecurso)
+        {
+            using (var conexion = ConexionBD.ObtenerConexion())
+            {
+                conexion.Open();
+                string query = @"DELETE FROM Asignaciones WHERE IdMision = @idMision AND IdRecurso = @idRecurso; 
+                        UPDATE Recursos SET Estado = 'Disponible' WHERE Id = @idRecurso;";
+                using (var cmd = new SqlCommand(query, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@idMision", idMision);
+                    cmd.Parameters.AddWithValue("@idRecurso", idRecurso);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+    }
+}
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ORBITA.datos
+{
+    internal class Program
+    {
+        static void Main(string[] args)
+        {
+        }
+    }
+}
+using ORBITA.dominios;
+using System;
+using System.Collections.Generic;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ORBITA.datos
+{
+    public class RecursoRepositorio
+    {
+        public List<RecursoExploracion> ObtenerTodos()
+        {
+            return ObtenerPorConsulta("SELECT Id, Codigo, Modelo, Tipo, Estado, AutonomiaVuelo, Alcance, Autonomia, CapacidadCarga, CantidadSensores, ConsumoEnergetico, CostoBase FROM Recursos");
+        }
+
+        public List<RecursoExploracion> ObtenerDisponibles()
+        {
+            return ObtenerPorConsulta("SELECT Id, Codigo, Modelo, Tipo, Estado, AutonomiaVuelo, Alcance, Autonomia, CapacidadCarga, CantidadSensores, ConsumoEnergetico, CostoBase FROM Recursos WHERE Estado = 'Disponible'");
+        }
+
+        private List<RecursoExploracion> ObtenerPorConsulta(string query)
+        {
+            var lista = new List<RecursoExploracion>();
+
+            using (var conexion = ConexionBD.ObtenerConexion())
+            {
+                conexion.Open();
+                using (var cmd = new SqlCommand(query, conexion))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string tipo = reader.GetString(3);
+                        RecursoExploracion recurso = null;
+
+                        int id = reader.GetInt32(0);
+                        string codigo = reader.GetString(1);
+                        string modelo = reader.GetString(2);
+                        EstadoRecurso estado = (EstadoRecurso)Enum.Parse(typeof(EstadoRecurso), reader.GetString(4));
+                        decimal costoBase = reader.GetDecimal(11);
+
+                        if (tipo == "Dron")
+                        {
+                            recurso = new Dron(id, codigo, modelo, costoBase,
+                                reader.IsDBNull(5) ? 0 : reader.GetDouble(5),
+                                reader.IsDBNull(6) ? 0 : reader.GetDouble(6));
+                        }
+                        else if (tipo == "Rover")
+                        {
+                            recurso = new RoverTerrestre(id, codigo, modelo, costoBase,
+                                reader.IsDBNull(7) ? 0 : reader.GetDouble(7),
+                                reader.IsDBNull(8) ? 0 : reader.GetDouble(8));
+                        }
+                        else if (tipo == "EstacionSensores")
+                        {
+                            recurso = new EstacionSensores(id, codigo, modelo, costoBase,
+                                reader.IsDBNull(9) ? 0 : reader.GetInt32(9),
+                                reader.IsDBNull(10) ? 0 : reader.GetDouble(10));
+                        }
+
+                        if (recurso != null)
+                        {
+                            recurso.Estado = estado;
+                            lista.Add(recurso);
+                        }
+                    }
+                }
+            }
+            return lista;
+        }
+
+        public void RegistrarRecurso(string codigo, string modelo, string tipo, decimal costoBase, double p1, double p2)
+        {
+            using (var conexion = ConexionBD.ObtenerConexion())
+            {
+                conexion.Open();
+                string query = "";
+
+                if (tipo == "Dron")
+                    query = "INSERT INTO Recursos (Codigo, Modelo, Tipo, Estado, AutonomiaVuelo, Alcance, CostoBase) VALUES (@cod, @mod, @tipo, 'Disponible', @p1, @p2, @costo)";
+                else if (tipo == "Rover")
+                    query = "INSERT INTO Recursos (Codigo, Modelo, Tipo, Estado, Autonomia, CapacidadCarga, CostoBase) VALUES (@cod, @mod, @tipo, 'Disponible', @p1, @p2, @costo)";
+                else
+                    query = "INSERT INTO Recursos (Codigo, Modelo, Tipo, Estado, CantidadSensores, ConsumoEnergetico, CostoBase) VALUES (@cod, @mod, @tipo, 'Disponible', @p1, @p2, @costo)";
+
+                using (var cmd = new SqlCommand(query, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@cod", codigo);
+                    cmd.Parameters.AddWithValue("@mod", modelo);
+                    cmd.Parameters.AddWithValue("@tipo", tipo);
+                    cmd.Parameters.AddWithValue("@costo", costoBase);
+                    cmd.Parameters.AddWithValue("@p1", p1);
+                    cmd.Parameters.AddWithValue("@p2", p2);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public void ModificarModeloYCosto(int id, string nuevoModelo, decimal nuevoCosto)
+        {
+            using (var conexion = ConexionBD.ObtenerConexion())
+            {
+                conexion.Open();
+                string query = "UPDATE Recursos SET Modelo = @mod, CostoBase = @costo WHERE Id = @id";
+                using (var cmd = new SqlCommand(query, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@mod", nuevoModelo);
+                    cmd.Parameters.AddWithValue("@costo", nuevoCosto);
+                    cmd.Parameters.AddWithValue("@id", id);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public void CambiarEstado(int idRecurso, EstadoRecurso nuevoEstado)
+        {
+            using (var conexion = ConexionBD.ObtenerConexion())
+            {
+                conexion.Open();
+                string query = "UPDATE Recursos SET Estado = @estado WHERE Id = @id";
+                using (var cmd = new SqlCommand(query, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@estado", nuevoEstado.ToString());
+                    cmd.Parameters.AddWithValue("@id", idRecurso);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+    }
+}
+using ORBITA.dominios;
+using System;
+using System.Collections.Generic;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ORBITA.datos
+{
+    public class UsuarioRepositorio
+    {
+        public Usuario Autenticar(string username, string password)
+        {
+            using (var conexion = ConexionBD.ObtenerConexion())
+            {
+                conexion.Open();
+                string query = "SELECT Id, NombreUsuario, Rol, Activo FROM Usuarios WHERE NombreUsuario = @user AND Contrasena = @pass AND Activo = 1";
+                using (var cmd = new SqlCommand(query, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@user", username);
+                    cmd.Parameters.AddWithValue("@pass", password);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            return new Usuario
+                            {
+                                Id = reader.GetInt32(0),
+                                NombreUsuario = reader.GetString(1),
+                                Rol = (RolUsuario)Enum.Parse(typeof(RolUsuario), reader.GetString(2)),
+                                Activo = reader.GetBoolean(3)
+                            };
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        public List<Usuario> ObtenerTodos()
+        {
+            var lista = new List<Usuario>();
+            using (var conexion = ConexionBD.ObtenerConexion())
+            {
+                conexion.Open();
+                string query = "SELECT Id, NombreUsuario, Rol, Activo FROM Usuarios";
+                using (var cmd = new SqlCommand(query, conexion))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        lista.Add(new Usuario
+                        {
+                            Id = reader.GetInt32(0),
+                            NombreUsuario = reader.GetString(1),
+                            Rol = (RolUsuario)Enum.Parse(typeof(RolUsuario), reader.GetString(2)),
+                            Activo = reader.GetBoolean(3)
+                        });
+                    }
+                }
+            }
+            return lista;
+        }
+
+        public void RegistrarUsuario(string username, string password, string rol)
+        {
+            using (var conexion = ConexionBD.ObtenerConexion())
+            {
+                conexion.Open();
+                string query = "INSERT INTO Usuarios (NombreUsuario, Contrasena, Rol, Activo) VALUES (@user, @pass, @rol, 1)";
+                using (var cmd = new SqlCommand(query, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@user", username);
+                    cmd.Parameters.AddWithValue("@pass", password);
+                    cmd.Parameters.AddWithValue("@rol", rol);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+    }
+}
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+// La información general de un ensamblado se controla mediante el siguiente 
+// conjunto de atributos. Cambie estos valores de atributo para modificar la información
+// asociada a un ensamblado.
+[assembly: AssemblyTitle("ORBITA.datos")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("ORBITA.datos")]
+[assembly: AssemblyCopyright("Copyright ©  2026")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+
+// Si establece ComVisible en false, los tipos de este ensamblado no estarán visibles 
+// para los componentes COM.  Si es necesario obtener acceso a un tipo en este ensamblado desde 
+// COM, establezca el atributo ComVisible en true en este tipo.
+[assembly: ComVisible(false)]
+
+// El siguiente GUID sirve como id. de typelib si este proyecto se expone a COM.
+[assembly: Guid("7eda1667-428e-4369-99e5-d4ca33ea8bab")]
+
+// La información de versión de un ensamblado consta de los cuatro valores siguientes:
+//
+//      Versión principal
+//      Versión secundaria
+//      Número de compilación
+//      Revisión
+//
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace ORBITA.dominio
+{
+    public partial class Form1 : Form
+    {
+        public Form1()
+        {
+            InitializeComponent();
+        }
+    }
+}
+namespace ORBITA.dominio
+{
+    partial class Form1
+    {
+        /// <summary>
+        /// Variable del diseñador necesaria.
+        /// </summary>
+        private System.ComponentModel.IContainer components = null;
+
+        /// <summary>
+        /// Limpiar los recursos que se estén usando.
+        /// </summary>
+        /// <param name="disposing">true si los recursos administrados se deben desechar; false en caso contrario.</param>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        #region Código generado por el Diseñador de Windows Forms
+
+        /// <summary>
+        /// Método necesario para admitir el Diseñador. No se puede modificar
+        /// el contenido de este método con el editor de código.
+        /// </summary>
+        private void InitializeComponent()
+        {
+            this.components = new System.ComponentModel.Container();
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.ClientSize = new System.Drawing.Size(800, 450);
+            this.Text = "Form1";
+        }
+
+        #endregion
+    }
+}
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace ORBITA.dominio
+{
+    internal static class Program
+    {
+        /// <summary>
+        /// Punto de entrada principal para la aplicación.
+        /// </summary>
+        [STAThread]
+        static void Main()
+        {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            Application.Run(new Form1());
+        }
+    }
+}
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+// La información general de un ensamblado se controla mediante el siguiente 
+// conjunto de atributos. Cambie estos valores de atributo para modificar la información
+// asociada con un ensamblado.
+[assembly: AssemblyTitle("ORBITA.dominio")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("ORBITA.dominio")]
+[assembly: AssemblyCopyright("Copyright ©  2026")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+
+// Si establece ComVisible en false, los tipos de este ensamblado no estarán visibles 
+// para los componentes COM.  Si es necesario obtener acceso a un tipo en este ensamblado desde 
+// COM, establezca el atributo ComVisible en true en este tipo.
+[assembly: ComVisible(false)]
+
+// El siguiente GUID sirve como id. de typelib si este proyecto se expone a COM.
+[assembly: Guid("c615640e-a53e-4a02-a658-f75a3f9fe303")]
+
+// La información de versión de un ensamblado consta de los cuatro valores siguientes:
+//
+//      Versión principal
+//      Versión secundaria
+//      Número de compilación
+//      Revisión
+//
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+//------------------------------------------------------------------------------
+// <auto-generated>
+//     Este código fue generado por una herramienta.
+//     Versión de runtime: 4.0.30319.42000
+//
+//     Los cambios de este archivo pueden provocar un comportamiento inesperado y se perderán si
+//     el código se vuelve a generar.
+// </auto-generated>
+//------------------------------------------------------------------------------
+
+namespace ORBITA.dominio.Properties
+{
+
+
+    /// <summary>
+    ///   Clase de recurso fuertemente tipado para buscar cadenas traducidas, etc.
+    /// </summary>
+    // StronglyTypedResourceBuilder generó automáticamente esta clase
+    // a través de una herramienta como ResGen o Visual Studio.
+    // Para agregar o quitar un miembro, edite el archivo .ResX y, a continuación, vuelva a ejecutar ResGen
+    // con la opción /str o recompile su proyecto de VS.
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "4.0.0.0")]
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+    [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
+    internal class Resources
+    {
+
+        private static global::System.Resources.ResourceManager resourceMan;
+
+        private static global::System.Globalization.CultureInfo resourceCulture;
+
+        [global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
+        internal Resources()
+        {
+        }
+
+        /// <summary>
+        ///   Devuelve la instancia ResourceManager almacenada en caché utilizada por esta clase.
+        /// </summary>
+        [global::System.ComponentModel.EditorBrowsableAttribute(global::System.ComponentModel.EditorBrowsableState.Advanced)]
+        internal static global::System.Resources.ResourceManager ResourceManager
+        {
+            get
+            {
+                if ((resourceMan == null))
+                {
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("ORBITA.dominio.Properties.Resources", typeof(Resources).Assembly);
+                    resourceMan = temp;
+                }
+                return resourceMan;
+            }
+        }
+
+        /// <summary>
+        ///   Invalida la propiedad CurrentUICulture del subproceso actual para todas las
+        ///   búsquedas de recursos usando esta clase de recursos fuertemente tipados.
+        /// </summary>
+        [global::System.ComponentModel.EditorBrowsableAttribute(global::System.ComponentModel.EditorBrowsableState.Advanced)]
+        internal static global::System.Globalization.CultureInfo Culture
+        {
+            get
+            {
+                return resourceCulture;
+            }
+            set
+            {
+                resourceCulture = value;
+            }
+        }
+    }
+}
+//------------------------------------------------------------------------------
+// <auto-generated>
+//     This code was generated by a tool.
+//     Runtime Version:4.0.30319.42000
+//
+//     Changes to this file may cause incorrect behavior and will be lost if
+//     the code is regenerated.
+// </auto-generated>
+//------------------------------------------------------------------------------
+
+namespace ORBITA.dominio.Properties
+{
+
+
+    [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "11.0.0.0")]
+    internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase
+    {
+
+        private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
+
+        public static Settings Default
+        {
+            get
+            {
+                return defaultInstance;
+            }
+        }
+    }
+}
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ORBITA.dominios
+{
+    public class Dron : RecursoExploracion
+    {
+        public double AutonomiaVuelo { get; set; }
+        public double Alcance { get; set; }
+
+        public Dron() { }
+
+        public Dron(int id, string codigo, string modelo, decimal costoPorHora, double autonomia, double alcance)
+            : base(id, codigo, modelo, costoPorHora)
+        {
+            AutonomiaVuelo = autonomia;
+            Alcance = alcance;
+        }
+
+        // Polimorfismo: Calcula costo según horas
+        public override decimal CalcularCostoOperacion(decimal horas)
+        {
+            return CostoBase * horas;
+        }
+
+        public override string ToString()
+        {
+            return $"[DRON] [{Codigo}] {Modelo} | Estado: {Estado} | Autonomía: {AutonomiaVuelo}h | Alcance: {Alcance}km | Costo/Hora: ${CostoBase} USD";
+        }
+    }
+}
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ORBITA.dominios
+{
+    public class EstacionSensores : RecursoExploracion
+    {
+        public int CantidadSensores { get; set; }
+        public double ConsumoEnergetico { get; set; }
+
+        public EstacionSensores() { }
+
+        public EstacionSensores(int id, string codigo, string modelo, decimal costoDiario, int cantidadSensores, double consumo)
+            : base(id, codigo, modelo, costoDiario)
+        {
+            CantidadSensores = cantidadSensores;
+            ConsumoEnergetico = consumo;
+        }
+
+        // Polimorfismo: Calcula costo según días
+        public override decimal CalcularCostoOperacion(decimal dias)
+        {
+            return CostoBase * dias;
+        }
+
+        public override string ToString()
+        {
+            return $"[ESTACIÓN] [{Codigo}] {Modelo} | Estado: {Estado} | Sensores: {CantidadSensores} | Consumo: {ConsumoEnergetico}W | Costo/Día: ${CostoBase} USD";
+        }
+    }
+}
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ORBITA.dominios
+{
+    public interface IAsignable
+    {
+        bool ConsultarDisponibilidad();
+        void AsignarAMision(int idMision);
+        void LiberarRecurso();
+    }
+}
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ORBITA.dominios
+{
+    public class Mision
+    {
+        public int Id { get; set; }
+        public string Codigo { get; set; }
+        public string Nombre { get; set; }
+        public string Descripcion { get; set; }
+        public int Prioridad { get; set; }
+        public DateTime FechaInicio { get; set; }
+        public DateTime FechaEstimadaFin { get; set; }
+        public EstadoMision Estado { get; set; }
+        public int IdResponsable { get; set; }
+        public Usuario Responsable { get; set; }
+
+        // Colección Genérica
+        public List<RecursoExploracion> RecursosAsignados { get; set; } = new List<RecursoExploracion>();
+        public override string ToString()
+        {
+            string respNombre = Responsable != null ? Responsable.NombreUsuario : "Sin asignar";
+            string recursosStr = RecursosAsignados.Count > 0
+                ? string.Join(", ", RecursosAsignados.ConvertAll(r => r.Codigo))
+                : "Ninguno";
+
+            return $"[{Codigo}] {Nombre}\n" +
+                   $"  - Descripción: {Descripcion}\n" +
+                   $"  - Inicio: {FechaInicio:yyyy-MM-dd} | Fin Estimado: {FechaEstimadaFin:yyyy-MM-dd}\n" +
+                   $"  - Prioridad: {Prioridad} | Estado: {Estado}\n" +
+                   $"  - Responsable: {respNombre}\n" +
+                   $"  - Recursos Asignados: {recursosStr}\n" +
+                   $"-------------------------------------------------------------------";
+        }
+
+        public Mision() { }
+
+        // Regla Especial: Protocolo de Seguridad ORBITA (Sección 13)
+        public (bool EsValido, string MensajeError) ValidarProtocoloSeguridad()
+        {
+            // 1. La misión deberá contener al menos un recurso.
+            if (RecursosAsignados == null || RecursosAsignados.Count == 0)
+            {
+                return (false, "La misión no tiene ningún recurso asignado.");
+            }
+
+            // 2. Ningún recurso podrá encontrarse en mantenimiento.
+            foreach (var recurso in RecursosAsignados)
+            {
+                if (recurso.Estado == EstadoRecurso.Mantenimiento)
+                {
+                    return (false, $"El recurso [{recurso.Codigo}] {recurso.Modelo} se encuentra en MANTENIMIENTO.");
+                }
+            }
+
+            // 3. Ningún recurso podrá estar asignado a otra misión activa (ya gestionado por el estado Asignado/Disponible)
+            // Se valida que todos los recursos estén formalmente listos.
+
+            // 4. La fecha de finalización estimada no podrá ser anterior a la fecha de inicio.
+            if (FechaEstimadaFin < FechaInicio)
+            {
+                return (false, "La fecha de finalización estimada no puede ser anterior a la fecha de inicio.");
+            }
+
+            // 5. El responsable de la misión deberá encontrarse activo.
+            if (Responsable == null || !Responsable.Activo)
+            {
+                return (false, "El usuario responsable de la misión no está activo o no fue asignado.");
+            }
+
+            // 6. Todos los datos obligatorios deberán encontrarse completos.
+            if (string.IsNullOrWhiteSpace(Codigo) || string.IsNullOrWhiteSpace(Nombre) || string.IsNullOrWhiteSpace(Descripcion))
+            {
+                return (false, "Faltan datos obligatorios de la misión (Código, Nombre o Descripción).");
+            }
+
+            return (true, string.Empty);
+        }
+    }
+}
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ORBITA.dominios
+{ 
+    
+    public enum RolUsuario
+    {
+        Administrador,
+        Coordinador,
+        Auditor,
+    }
+
+    public enum EstadoMision
+    {
+        Planificada,
+        EnEjecucion,
+        Finalizada,
+        Cancelada
+
+    }
+
+    public enum EstadoRecurso
+    {
+        Disponible,
+        Asignado,
+        Mantenimiento
+    }
+    internal class Program
+    {
+        static void Main(string[] args)
+        {
+        }
+    }
+}
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ORBITA.dominios
+{
+    public abstract class RecursoExploracion : IAsignable
+    {
+        public int Id { get; set; }
+        public string Codigo { get; set; }
+        public string Modelo { get; set; }
+        public EstadoRecurso Estado { get; set; }
+        public decimal CostoBase { get; set; }
+
+        // Constructores (Sobrecarga)
+        protected RecursoExploracion() { }
+
+        protected RecursoExploracion(int id, string codigo, string modelo, decimal costoBase)
+        {
+            Id = id;
+            Codigo = codigo;
+            Modelo = modelo;
+            Estado = EstadoRecurso.Disponible;
+            CostoBase = costoBase;
+        }
+
+        // Método Polimórfico Abstracto
+        public abstract decimal CalcularCostoOperacion(decimal parametro);
+
+        // Métodos de IAsignable
+        public bool ConsultarDisponibilidad()
+        {
+            return Estado == EstadoRecurso.Disponible;
+        }
+
+        public void AsignarAMision(int idMision)
+        {
+            if (!ConsultarDisponibilidad())
+            {
+                throw new RecursoNoDisponibleException($"El recurso {Codigo} no está disponible (Estado: {Estado}).");
+            }
+            Estado = EstadoRecurso.Asignado;
+        }
+
+        public void LiberarRecurso()
+        {
+            Estado = EstadoRecurso.Disponible;
+        }
+
+        // Sobrescritura de ToString()
+        public override string ToString()
+        {
+            return $"[{Codigo}] {Modelo} | Estado: {Estado}";
+        }
+    }
+}
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ORBITA.dominios
+{
+    public class RecursoNoDisponibleException : Exception
+    {
+        public RecursoNoDisponibleException(string mensaje): base(mensaje)
+        {
+
+        }
+    }
+}
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ORBITA.dominios
+{
+    public class RoverTerrestre : RecursoExploracion
+    {
+        public double Autonomia { get; set; }
+        public double CapacidadCarga { get; set; }
+
+        public RoverTerrestre() { }
+
+        public RoverTerrestre(int id, string codigo, string modelo, decimal costoPorKm, double autonomia, double capacidadCarga)
+            : base(id, codigo, modelo, costoPorKm)
+        {
+            Autonomia = autonomia;
+            CapacidadCarga = capacidadCarga;
+        }
+
+        // Polimorfismo: Calcula costo según kilómetros
+        public override decimal CalcularCostoOperacion(decimal kilometros)
+        {
+            return CostoBase * kilometros;
+        }
+
+        public override string ToString()
+        {
+            return $"[ROVER] [{Codigo}] {Modelo} | Estado: {Estado} | Autonomía: {Autonomia}km | Carga: {CapacidadCarga}kg | Costo/Km: ${CostoBase} USD";
+        }
+    }
+}
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ORBITA.dominios
+{
+    public class Usuario
+    {
+        public int Id { get; set; }
+        public string NombreUsuario { get; set; }
+        public string Contrasena { get; set; }
+        public RolUsuario Rol { get; set; }
+        public bool Activo { get; set; }
+
+        public Usuario() { }
+
+        public Usuario(int id, string nombreUsuario, string contrasena, RolUsuario rol, bool activo = true)
+        {
+            Id = id;
+            NombreUsuario = nombreUsuario;
+            Contrasena = contrasena;
+            Rol = rol;
+            Activo = activo;
+        }
+    }
+}
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+// La información general de un ensamblado se controla mediante el siguiente 
+// conjunto de atributos. Cambie estos valores de atributo para modificar la información
+// asociada a un ensamblado.
+[assembly: AssemblyTitle("ORBITA.dominios")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("ORBITA.dominios")]
+[assembly: AssemblyCopyright("Copyright ©  2026")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+
+// Si establece ComVisible en false, los tipos de este ensamblado no estarán visibles 
+// para los componentes COM.  Si es necesario obtener acceso a un tipo en este ensamblado desde 
+// COM, establezca el atributo ComVisible en true en este tipo.
+[assembly: ComVisible(false)]
+
+// El siguiente GUID sirve como id. de typelib si este proyecto se expone a COM.
+[assembly: Guid("2ed85e17-848e-4620-9122-ae9aad485c10")]
+
+// La información de versión de un ensamblado consta de los cuatro valores siguientes:
+//
+//      Versión principal
+//      Versión secundaria
+//      Número de compilación
+//      Revisión
+//
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ORBITAControl
+{
+    internal class Program
+    {
+        static void Main(string[] args)
+        {
+        }
+    }
+}
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+// La información general de un ensamblado se controla mediante el siguiente 
+// conjunto de atributos. Cambie estos valores de atributo para modificar la información
+// asociada a un ensamblado.
+[assembly: AssemblyTitle("ORBITAControl")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("ORBITAControl")]
+[assembly: AssemblyCopyright("Copyright ©  2026")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+
+// Si establece ComVisible en false, los tipos de este ensamblado no estarán visibles 
+// para los componentes COM.  Si es necesario obtener acceso a un tipo en este ensamblado desde 
+// COM, establezca el atributo ComVisible en true en este tipo.
+[assembly: ComVisible(false)]
+
+// El siguiente GUID sirve como id. de typelib si este proyecto se expone a COM.
+[assembly: Guid("a547b861-9633-47a4-b2cd-467f090bce92")]
+
+// La información de versión de un ensamblado consta de los cuatro valores siguientes:
+//
+//      Versión principal
+//      Versión secundaria
+//      Número de compilación
+//      Revisión
+//
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]

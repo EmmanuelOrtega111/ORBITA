@@ -1,5 +1,0 @@
-<Solution>
-  <Project Path="ORBITA.App/ORBITA.App.csproj" Id="904e54c8-f042-481a-a200-0d6c2cc142cb" />
-  <Project Path="ORBITA.Datos/ORBITA.Datos.csproj" />
-  <Project Path="ORBITA.Dominio/ORBITA.Dominio.csproj" />
-</Solution>
