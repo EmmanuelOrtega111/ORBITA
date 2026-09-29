@@ -6,7 +6,7 @@ Sistema de gestión y monitoreo para misiones de exploración y asignación de r
 
 ## 1. 👥 Integrantes del Equipo
 
-* **Guerrero Polanco, José Manuel** - `CP240499`
+* **Guerrero Polanco, José Manuel** - `GP170487`
 * **Quintanilla Ávalos, Fernando Josué** - `QA221370`
 * **Escobar Ortega, Emmanuel Alexander** - `EO260404`
 
